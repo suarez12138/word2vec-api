@@ -7,24 +7,24 @@ Example call: curl http://127.0.0.1:5000/word2vec/n_similarity?ws1=sushi&ws1=sho
 '''
 from __future__ import print_function
 
+import numpy as np
 from future import standard_library
+from scipy import spatial
+
 standard_library.install_aliases()
-from builtins import str
-from flask import Flask, request, jsonify
+from flask import Flask
 from flask_restful import Resource, Api, reqparse
 import gensim.models.keyedvectors as word2vec
-from gensim import utils, matutils
-from numpy import exp, dot, zeros, outer, random, dtype, get_include, float32 as REAL,\
-     uint32, seterr, array, uint8, vstack, argsort, fromstring, sqrt, newaxis, ndarray, empty, sum as np_sum
+
 import pickle
 import argparse
 import base64
-import sys
+import jieba
 
 parser = reqparse.RequestParser()
 
 
-def filter_words(words):
+def filter_words(words, model):
     if words is None:
         return
     return [word for word in words if word in model.vocab]
@@ -36,7 +36,9 @@ class N_Similarity(Resource):
         parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
         parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
         args = parser.parse_args()
-        return model.n_similarity(filter_words(args['ws1']),filter_words(args['ws2'])).item()
+        ws1 = args['ws1'][0].split(' ')
+        ws2 = args['ws2'][0].split(' ')
+        return model.n_similarity(ws1, ws2).item()
 
 
 class Similarity(Resource):
@@ -48,6 +50,72 @@ class Similarity(Resource):
         return model.similarity(args['w1'], args['w2']).item()
 
 
+class SentenceSimilarity(Resource):
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
+        parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
+        args = parser.parse_args()
+        ws1 = args['ws1'][0].split(' ')
+        ws2 = args['ws2'][0].split(' ')
+        return model.n_similarity(filter_words(ws1, model), filter_words(ws2, model)).item()
+        # parser = reqparse.RequestParser()
+        # parser.add_argument('s1', type=str, required=True, help="Sentence 1 cannot be blank!")
+        # parser.add_argument('s2', type=str, required=True, help="Sentence 2 cannot be blank!")
+        # args = parser.parse_args()
+        #
+        # def avg_feature_vector(sentence, model, num_features, index2word_set):
+        #     words = sentence.split()
+        #     feature_vec = np.zeros((num_features,), dtype='float32')
+        #     n_words = 0
+        #     for word in words:
+        #         if word in index2word_set:
+        #             n_words += 1
+        #             feature_vec = np.add(feature_vec, model[word])
+        #     if (n_words > 0):
+        #         feature_vec = np.divide(feature_vec, n_words)
+        #     return feature_vec
+        #
+        # s1_afv = avg_feature_vector(args['s1'], model=model, num_features=300, index2word_set=index2word_set)
+        # s2_afv = avg_feature_vector(args['s2'], model=model, num_features=300, index2word_set=index2word_set)
+        # sim = 1 - spatial.distance.cosine(s1_afv, s2_afv)
+        #
+        # return sim
+
+
+class ChineseSenSimilarity(Resource):
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
+        parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
+        args = parser.parse_args()
+        ws1 = jieba.lcut(args['ws1'][0])
+        ws2 = jieba.lcut(args['ws2'][0])
+        return baike_model.n_similarity(filter_words(ws1, baike_model), filter_words(ws2, baike_model)).item()
+        # parser = reqparse.RequestParser()
+        # parser.add_argument('s1', type=str, required=True, help="Sentence 1 cannot be blank!")
+        # parser.add_argument('s2', type=str, required=True, help="Sentence 2 cannot be blank!")
+        # args = parser.parse_args()
+        #
+        # def avg_feature_vector(sentence, model, num_features, index2word_set):
+        #     words = sentence.split()
+        #     feature_vec = np.zeros((num_features,), dtype='float32')
+        #     n_words = 0
+        #     for word in words:
+        #         if word in index2word_set:
+        #             n_words += 1
+        #             feature_vec = np.add(feature_vec, model[word])
+        #     if (n_words > 0):
+        #         feature_vec = np.divide(feature_vec, n_words)
+        #     return feature_vec
+        #
+        # s1_afv = avg_feature_vector(args['s1'], model=model2, num_features=300, index2word_set=baike_index2word_set)
+        # s2_afv = avg_feature_vector(args['s2'], model=model2, num_features=300, index2word_set=baike_index2word_set)
+        # sim = 1 - spatial.distance.cosine(s1_afv, s2_afv)
+        #
+        # return sim
+
+
 class MostSimilar(Resource):
     def get(self):
         if (norm == "disable"):
@@ -57,15 +125,15 @@ class MostSimilar(Resource):
         parser.add_argument('negative', type=str, required=False, help="Negative words.", action='append')
         parser.add_argument('topn', type=int, required=False, help="Number of results.")
         args = parser.parse_args()
-        pos = filter_words(args.get('positive', []))
-        neg = filter_words(args.get('negative', []))
+        pos = filter_words(args.get('positive', []), model)
+        neg = filter_words(args.get('negative', []), model)
         t = args.get('topn', 10)
         pos = [] if pos == None else pos
         neg = [] if neg == None else neg
         t = 10 if t == None else t
         print("positive: " + str(pos) + " negative: " + str(neg) + " topn: " + str(t))
         try:
-            res = model.most_similar_cosmul(positive=pos,negative=neg,topn=t)
+            res = model.most_similar_cosmul(positive=pos, negative=neg, topn=t)
             return res
         except Exception as e:
             print(e)
@@ -85,6 +153,7 @@ class Model(Resource):
             print(e)
             return
 
+
 class ModelWordSet(Resource):
     def get(self):
         try:
@@ -94,32 +163,38 @@ class ModelWordSet(Resource):
             print(e)
             return
 
+
 app = Flask(__name__)
 api = Api(app)
+
 
 @app.errorhandler(404)
 def pageNotFound(error):
     return "page not found"
 
+
 @app.errorhandler(500)
 def raiseError(error):
     return error
+
 
 if __name__ == '__main__':
     global model
     global norm
 
-    #----------- Parsing Arguments ---------------
+    # ----------- Parsing Arguments ---------------
     p = argparse.ArgumentParser()
     p.add_argument("--model", help="Path to the trained model")
     p.add_argument("--binary", help="Specifies the loaded model is binary")
     p.add_argument("--host", help="Host name (default: localhost)")
     p.add_argument("--port", help="Port (default: 5000)")
     p.add_argument("--path", help="Path (default: /word2vec)")
-    p.add_argument("--norm", help="How to normalize vectors. clobber: Replace loaded vectors with normalized versions. Saves a lot of memory if exact vectors aren't needed. both: Preserve the original vectors (double memory requirement). already: Treat model as already normalized. disable: Disable 'most_similar' queries and do not normalize vectors. (default: both)")
+    p.add_argument("--norm",
+                   help="How to normalize vectors. clobber: Replace loaded vectors with normalized versions. Saves a lot of memory if exact vectors aren't needed. both: Preserve the original vectors (double memory requirement). already: Treat model as already normalized. disable: Disable 'most_similar' queries and do not normalize vectors. (default: both)")
     args = p.parse_args()
 
-    model_path = args.model if args.model else "./model.bin.gz"
+    model_path = args.model if args.model else "./GoogleNews-vectors-negative300.bin.gz"
+    baike_model_path = "./news_12g_baidubaike_20g_novel_90g_embedding_64.bin"
     binary = True if args.binary else False
     host = args.host if args.host else "localhost"
     path = args.path if args.path else "/word2vec"
@@ -128,7 +203,10 @@ if __name__ == '__main__':
         print("Usage: word2vec-apy.py --model path/to/the/model [--host host --port 1234]")
 
     print("Loading model...")
-    model = word2vec.KeyedVectors.load_word2vec_format(model_path, binary=binary)
+    model = word2vec.KeyedVectors.load_word2vec_format(model_path, binary=binary, limit=8000)
+    index2word_set = set(model.index2word)
+    baike_model = word2vec.KeyedVectors.load_word2vec_format(baike_model_path, binary=binary, limit=8000)
+    baike_index2word_set = set(baike_model.index2word)
 
     norm = args.norm if args.norm else "both"
     norm = norm.lower()
@@ -147,11 +225,13 @@ if __name__ == '__main__':
     if (norm == "both"):
         print("Model loaded.")
     else:
-        print("Model loaded. (norm=",norm,")")
+        print("Model loaded. (norm=", norm, ")")
 
-    api.add_resource(N_Similarity, path+'/n_similarity')
-    api.add_resource(Similarity, path+'/similarity')
-    api.add_resource(MostSimilar, path+'/most_similar')
-    api.add_resource(Model, path+'/model')
-    api.add_resource(ModelWordSet, '/word2vec/model_word_set')
+    api.add_resource(N_Similarity, path + '/n_similarity')
+    api.add_resource(Similarity, path + '/similarity')
+    api.add_resource(SentenceSimilarity, path + '/sentence_similarity')
+    api.add_resource(ChineseSenSimilarity, path + '/chinese_sen_similarity')
+    # api.add_resource(MostSimilar, path + '/most_similar')
+    # api.add_resource(Model, path + '/model')
+    # api.add_resource(ModelWordSet, '/word2vec/model_word_set')
     app.run(host=host, port=port)
