@@ -24,22 +24,10 @@ import jieba
 parser = reqparse.RequestParser()
 
 
-def filter_words(words, model):
+def filter_words(words, pickedModel):
     if words is None:
         return
-    return [word for word in words if word in model.vocab]
-
-
-class N_Similarity(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
-        parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
-        args = parser.parse_args()
-        ws1 = args['ws1'][0].split(' ')
-        ws2 = args['ws2'][0].split(' ')
-        return model.n_similarity(ws1, ws2).item()
-
+    return [word for word in words if word in pickedModel.vocab]
 
 class Similarity(Resource):
     def get(self):
@@ -170,7 +158,7 @@ api = Api(app)
 
 @app.errorhandler(404)
 def pageNotFound(error):
-    return "page not found"
+    return "page not found, you should use correct api"
 
 
 @app.errorhandler(500)
@@ -227,7 +215,6 @@ if __name__ == '__main__':
     else:
         print("Model loaded. (norm=", norm, ")")
 
-    api.add_resource(N_Similarity, path + '/n_similarity')
     api.add_resource(Similarity, path + '/similarity')
     api.add_resource(SentenceSimilarity, path + '/sentence_similarity')
     api.add_resource(ChineseSenSimilarity, path + '/chinese_sen_similarity')
