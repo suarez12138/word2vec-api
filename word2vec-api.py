@@ -109,52 +109,6 @@ class ChineseSenSimilarity(Resource):
         return sim
 
 
-class MostSimilar(Resource):
-    def get(self):
-        if (norm == "disable"):
-            return "most_similar disabled", 400
-        parser = reqparse.RequestParser()
-        parser.add_argument('positive', type=str, required=False, help="Positive words.", action='append')
-        parser.add_argument('negative', type=str, required=False, help="Negative words.", action='append')
-        parser.add_argument('topn', type=int, required=False, help="Number of results.")
-        args = parser.parse_args()
-        pos = filter_words(args.get('positive', []), model)
-        neg = filter_words(args.get('negative', []), model)
-        t = args.get('topn', 10)
-        pos = [] if pos == None else pos
-        neg = [] if neg == None else neg
-        t = 10 if t == None else t
-        print("positive: " + str(pos) + " negative: " + str(neg) + " topn: " + str(t))
-        try:
-            res = model.most_similar_cosmul(positive=pos, negative=neg, topn=t)
-            return res
-        except Exception as e:
-            print(e)
-            print(res)
-
-
-class Model(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('word', type=str, required=True, help="word to query.")
-        args = parser.parse_args()
-        try:
-            res = model[args['word']]
-            res = base64.b64encode(res).decode()
-            return res
-        except Exception as e:
-            print(e)
-            return
-
-
-class ModelWordSet(Resource):
-    def get(self):
-        try:
-            res = base64.b64encode(pickle.dumps(set(model.index2word))).decode()
-            return res
-        except Exception as e:
-            print(e)
-            return
 
 
 app = Flask(__name__)
@@ -223,7 +177,4 @@ if __name__ == '__main__':
     api.add_resource(Similarity, path + '/similarity')
     api.add_resource(SentenceSimilarity, path + '/sentence_similarity')
     api.add_resource(ChineseSenSimilarity, path + '/chinese_sen_similarity')
-    # api.add_resource(MostSimilar, path + '/most_similar')
-    # api.add_resource(Model, path + '/model')
-    # api.add_resource(ModelWordSet, '/word2vec/model_word_set')
     app.run(host=host, port=port)
