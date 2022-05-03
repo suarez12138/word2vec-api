@@ -1,6 +1,6 @@
 '''
 Simple web service wrapping a Word2Vec as implemented in Gensim
-Example call: curl http://127.0.0.1:5000/word2vec/n_similarity?ws1=sushi&ws1=shop&ws2=japanese&ws2=restaurant
+Example call: curl http://127.0.0.1:5000/word2vec/n_similarity?s1=sushi&s1=shop&ws2=japanese&ws2=restaurant
 @TODO: Add more methods
 @TODO: Add command line parameter: path to the trained model
 @TODO: Add command line parameters: host and port
@@ -42,12 +42,12 @@ class Similarity(Resource):
 class SentenceSimilarity(Resource):
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
-        parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
+        parser.add_argument('s1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
+        parser.add_argument('s2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
         args = parser.parse_args()
-        ws1 = args['ws1'][0].split(' ')
-        ws2 = args['ws2'][0].split(' ')
-        return model.n_similarity(filter_words(ws1, model), filter_words(ws2, model)).item()
+        s1 = args['s1'][0].split(' ')
+        s2 = args['s2'][0].split(' ')
+        return model.n_similarity(filter_words(s1, model), filter_words(s2, model)).item()
         # parser = reqparse.RequestParser()
         # parser.add_argument('s1', type=str, required=True, help="Sentence 1 cannot be blank!")
         # parser.add_argument('s2', type=str, required=True, help="Sentence 2 cannot be blank!")
@@ -75,17 +75,17 @@ class SentenceSimilarity(Resource):
 class ChineseSenSimilarity(Resource):
     def get(self):
         # parser = reqparse.RequestParser()
-        # parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
-        # parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
+        # parser.add_argument('s1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
+        # parser.add_argument('s2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
         # args = parser.parse_args()
-        # ws1 = jieba.lcut(args['ws1'][0])
-        # ws2 = jieba.lcut(args['ws2'][0])
-        # filtered1 = filter_words(ws1, baike_model)
-        # filtered2 = filter_words(ws2, baike_model)
+        # s1 = jieba.lcut(args['s1'][0])
+        # s2 = jieba.lcut(args['s2'][0])
+        # filtered1 = filter_words(s1, baike_model)
+        # filtered2 = filter_words(s2, baike_model)
         # return baike_model.n_similarity(filtered1, filtered2).item()
         parser = reqparse.RequestParser()
-        parser.add_argument('ws1', type=str, required=True, help="Sentence 1 cannot be blank!", action='append')
-        parser.add_argument('ws2', type=str, required=True, help="Sentence 2 cannot be blank!", action='append')
+        parser.add_argument('s1', type=str, required=True, help="Sentence 1 cannot be blank!", action='append')
+        parser.add_argument('s2', type=str, required=True, help="Sentence 2 cannot be blank!", action='append')
         args = parser.parse_args()
 
         def avg_feature_vector(sentence, pickedModel, num_features, index2word_set):
@@ -96,19 +96,25 @@ class ChineseSenSimilarity(Resource):
                 if word in index2word_set:
                     n_words += 1
                     feature_vec = np.add(feature_vec, pickedModel[word])
+                elif len(word)>1:
+                    singleChar = list(word)
+                    for char in singleChar:
+                         if char in index2word_set:
+                            print('char', char)
+                            n_words += 1
+                            feature_vec = np.add(feature_vec, pickedModel[char])
             if (n_words > 0):
                 feature_vec = np.divide(feature_vec, n_words)
             return feature_vec
 
-        s1_afv = avg_feature_vector(args['ws1'], pickedModel=baike_model, num_features=64,
+        s1_afv = avg_feature_vector(args['s1'], pickedModel=baike_model, num_features=64,
                                     index2word_set=baike_index2word_set)
-        s2_afv = avg_feature_vector(args['ws2'], pickedModel=baike_model, num_features=64,
+        s2_afv = avg_feature_vector(args['s2'], pickedModel=baike_model, num_features=64,
                                     index2word_set=baike_index2word_set)
+        print('s1_afv', s1_afv)
+        print('s2_afv', s2_afv)
         sim = 1 - spatial.distance.cosine(s1_afv, s2_afv)
-
-        return sim
-
-
+        print('sim', sim)
 
 
 app = Flask(__name__)
