@@ -29,6 +29,7 @@ def filter_words(words, pickedModel):
         return
     return [word for word in words if word in pickedModel.vocab]
 
+
 class Similarity(Resource):
     def get(self):
         parser = reqparse.RequestParser()
@@ -73,35 +74,39 @@ class SentenceSimilarity(Resource):
 
 class ChineseSenSimilarity(Resource):
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
-        parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
-        args = parser.parse_args()
-        ws1 = jieba.lcut(args['ws1'][0])
-        ws2 = jieba.lcut(args['ws2'][0])
-        return baike_model.n_similarity(filter_words(ws1, baike_model), filter_words(ws2, baike_model)).item()
         # parser = reqparse.RequestParser()
-        # parser.add_argument('s1', type=str, required=True, help="Sentence 1 cannot be blank!")
-        # parser.add_argument('s2', type=str, required=True, help="Sentence 2 cannot be blank!")
+        # parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
+        # parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
         # args = parser.parse_args()
-        #
-        # def avg_feature_vector(sentence, model, num_features, index2word_set):
-        #     words = sentence.split()
-        #     feature_vec = np.zeros((num_features,), dtype='float32')
-        #     n_words = 0
-        #     for word in words:
-        #         if word in index2word_set:
-        #             n_words += 1
-        #             feature_vec = np.add(feature_vec, model[word])
-        #     if (n_words > 0):
-        #         feature_vec = np.divide(feature_vec, n_words)
-        #     return feature_vec
-        #
-        # s1_afv = avg_feature_vector(args['s1'], model=model2, num_features=300, index2word_set=baike_index2word_set)
-        # s2_afv = avg_feature_vector(args['s2'], model=model2, num_features=300, index2word_set=baike_index2word_set)
-        # sim = 1 - spatial.distance.cosine(s1_afv, s2_afv)
-        #
-        # return sim
+        # ws1 = jieba.lcut(args['ws1'][0])
+        # ws2 = jieba.lcut(args['ws2'][0])
+        # filtered1 = filter_words(ws1, baike_model)
+        # filtered2 = filter_words(ws2, baike_model)
+        # return baike_model.n_similarity(filtered1, filtered2).item()
+        parser = reqparse.RequestParser()
+        parser.add_argument('ws1', type=str, required=True, help="Sentence 1 cannot be blank!", action='append')
+        parser.add_argument('ws2', type=str, required=True, help="Sentence 2 cannot be blank!", action='append')
+        args = parser.parse_args()
+
+        def avg_feature_vector(sentence, pickedModel, num_features, index2word_set):
+            words = jieba.lcut(sentence[0])
+            feature_vec = np.zeros((num_features,), dtype='float32')
+            n_words = 0
+            for word in words:
+                if word in index2word_set:
+                    n_words += 1
+                    feature_vec = np.add(feature_vec, pickedModel[word])
+            if (n_words > 0):
+                feature_vec = np.divide(feature_vec, n_words)
+            return feature_vec
+
+        s1_afv = avg_feature_vector(args['ws1'], pickedModel=baike_model, num_features=64,
+                                    index2word_set=baike_index2word_set)
+        s2_afv = avg_feature_vector(args['ws2'], pickedModel=baike_model, num_features=64,
+                                    index2word_set=baike_index2word_set)
+        sim = 1 - spatial.distance.cosine(s1_afv, s2_afv)
+
+        return sim
 
 
 class MostSimilar(Resource):
