@@ -20,6 +20,7 @@ import pickle
 import argparse
 import base64
 import jieba
+import re
 
 parser = reqparse.RequestParser()
 
@@ -45,9 +46,20 @@ class SentenceSimilarity(Resource):
         parser.add_argument('s1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
         parser.add_argument('s2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
         args = parser.parse_args()
-        s1 = args['s1'][0].split(' ')
-        s2 = args['s2'][0].split(' ')
-        return model.n_similarity(filter_words(s1, model), filter_words(s2, model)).item()
+        # 's不好解读
+        s1 = args['s1'][0].replace('\'s', '')
+        s2 = args['s2'][0].replace('\'s', '')
+        # 拆解成词
+        splitPattern = r'[,.?: ]'
+        s1 = re.split(splitPattern, s1)
+        s2 = re.split(splitPattern, s2)
+        # 过滤掉词库里没有的
+        filterS1 = filter_words(s1, model)
+        filterS2 = filter_words(s2, model)
+        if len(filterS1) == 0 or len(filterS2) == 0:
+            return -2
+        return model.n_similarity(filterS1, filterS2).item()
+
         # parser = reqparse.RequestParser()
         # parser.add_argument('s1', type=str, required=True, help="Sentence 1 cannot be blank!")
         # parser.add_argument('s2', type=str, required=True, help="Sentence 2 cannot be blank!")
@@ -96,14 +108,14 @@ class ChineseSenSimilarity(Resource):
                 if word in index2word_set:
                     n_words += 1
                     feature_vec = np.add(feature_vec, pickedModel[word])
-                elif len(word)>1:
+                elif len(word) > 1:
                     singleChar = list(word)
                     for char in singleChar:
-                         if char in index2word_set:
+                        if char in index2word_set:
                             print('char', char)
                             n_words += 1
                             feature_vec = np.add(feature_vec, pickedModel[char])
-            if (n_words > 0):
+            if n_words > 0:
                 feature_vec = np.divide(feature_vec, n_words)
             return feature_vec
 

@@ -53,3 +53,6 @@ coverage.xml
 docs/_build/
 
 .idea/
+
+GoogleNews-vectors-negative300.bin.gz
+news_12g_baidubaike_20g_novel_90g_embedding_64.bin
