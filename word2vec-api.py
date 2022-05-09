@@ -50,7 +50,7 @@ class SentenceSimilarity(Resource):
         s1 = args['s1'][0].replace('\'s', '')
         s2 = args['s2'][0].replace('\'s', '')
         # 拆解成词
-        splitPattern = r'[,.?: ]'
+        splitPattern = r'[,.?:-_|! ]'
         s1 = re.split(splitPattern, s1)
         s2 = re.split(splitPattern, s2)
         # 过滤掉词库里没有的
