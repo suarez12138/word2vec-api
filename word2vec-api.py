@@ -16,9 +16,7 @@ from flask import Flask
 from flask_restful import Resource, Api, reqparse
 import gensim.models.keyedvectors as word2vec
 
-import pickle
 import argparse
-import base64
 import jieba
 import re
 
@@ -40,6 +38,19 @@ class Similarity(Resource):
         return model.similarity(args['w1'], args['w2']).item()
 
 
+class IsInVocabulary(Resource):
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('w', type=str, required=True, help="Word 1 cannot be blank!")
+        args = parser.parse_args()
+        s = args['w'].replace('\'s', '')
+        splitPattern = r'[,.?:\-_|! ]'
+        s = re.split(splitPattern, s)
+        filterS = filter_words(s, model)
+        res = 0 if len(filterS) == 0 else 1
+        return {'length': len(''.join(filterS)), 'res': res}
+
+
 class SentenceSimilarity(Resource):
     def get(self):
         parser = reqparse.RequestParser()
@@ -50,7 +61,7 @@ class SentenceSimilarity(Resource):
         s1 = args['s1'][0].replace('\'s', '')
         s2 = args['s2'][0].replace('\'s', '')
         # 拆解成词
-        splitPattern = r'[,.?:-_|! ]'
+        splitPattern = r'[,.?:\-_|! ]'
         s1 = re.split(splitPattern, s1)
         s2 = re.split(splitPattern, s2)
         # 过滤掉词库里没有的
@@ -168,9 +179,9 @@ if __name__ == '__main__':
         print("Usage: word2vec-apy.py --model path/to/the/model [--host host --port 1234]")
 
     print("Loading model...")
-    model = word2vec.KeyedVectors.load_word2vec_format(model_path, binary=binary, limit=8000)
+    model = word2vec.KeyedVectors.load_word2vec_format(model_path, binary=binary, limit=40000)
     index2word_set = set(model.index2word)
-    baike_model = word2vec.KeyedVectors.load_word2vec_format(baike_model_path, binary=binary, limit=8000)
+    baike_model = word2vec.KeyedVectors.load_word2vec_format(baike_model_path, binary=binary, limit=20000)
     baike_index2word_set = set(baike_model.index2word)
 
     norm = args.norm if args.norm else "both"
@@ -195,4 +206,5 @@ if __name__ == '__main__':
     api.add_resource(Similarity, path + '/similarity')
     api.add_resource(SentenceSimilarity, path + '/sentence_similarity')
     api.add_resource(ChineseSenSimilarity, path + '/chinese_sen_similarity')
+    api.add_resource(IsInVocabulary, path + '/in_vocabulary')
     app.run(host=host, port=port)
