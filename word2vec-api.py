@@ -44,7 +44,7 @@ class IsInVocabulary(Resource):
         parser.add_argument('w', type=str, required=True, help="Word 1 cannot be blank!")
         args = parser.parse_args()
         s = args['w'].replace('\'s', '')
-        splitPattern = r'[,.?:\-_|! ]'
+        splitPattern = r'[,.?:\-_|/! ]'
         s = re.split(splitPattern, s)
         filterS = filter_words(s, model)
         res = 0 if len(filterS) == 0 else 1
@@ -61,7 +61,7 @@ class SentenceSimilarity(Resource):
         s1 = args['s1'][0].replace('\'s', '')
         s2 = args['s2'][0].replace('\'s', '')
         # 拆解成词
-        splitPattern = r'[,.?:\-_|! ]'
+        splitPattern = r'[,.?:\-_|/! ]'
         s1 = re.split(splitPattern, s1)
         s2 = re.split(splitPattern, s2)
         # 过滤掉词库里没有的
